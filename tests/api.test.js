@@ -2,6 +2,28 @@
 
 const request = require('supertest');
 
+const mockLookup = jest.fn().mockImplementation(async (hostname) => {
+  if (hostname === 'example.com') {
+    return [{ address: '93.184.216.34', family: 4 }];
+  }
+
+  if (hostname === 'google.com') {
+    return [{ address: '142.250.190.14', family: 4 }];
+  }
+
+  if (hostname === 'internal.example.test') {
+    return [{ address: '10.0.0.8', family: 4 }];
+  }
+
+  return [{ address: '203.0.113.10', family: 4 }];
+});
+
+jest.mock('dns', () => ({
+  promises: {
+    lookup: (...args) => mockLookup(...args),
+  },
+}));
+
 // Mock playwright ANTES de importar la app
 jest.mock('playwright', () => {
   const mockBuffer = Buffer.from('fake-png-data');
@@ -26,6 +48,11 @@ jest.mock('playwright', () => {
 
 const app = require('../server');
 
+beforeEach(() => {
+  delete process.env.ALLOW_PRIVATE_NETWORKS;
+  mockLookup.mockClear();
+});
+
 describe('GET /health', () => {
   test('retorna status ok', async () => {
     const res = await request(app).get('/health');
@@ -33,6 +60,8 @@ describe('GET /health', () => {
     expect(res.body.status).toBe('ok');
     expect(res.body.service).toBe('screenshot-api');
     expect(res.body.timestamp).toBeDefined();
+    expect(res.body.uptime).toBeGreaterThanOrEqual(0);
+    expect(res.body.allowPrivateNetworks).toBe(false);
   });
 });
 
@@ -52,11 +81,34 @@ describe('POST /screenshot', () => {
   });
 
   test('retorna 400 con URL inválida', async () => {
-    // La validación de URL ocurre antes de llamar a playwright
     const res = await request(app)
       .post('/screenshot')
       .send({ url: 'not-a-url' });
-    expect([400, 500]).toContain(res.status);
+    expect(res.status).toBe(400);
+  });
+
+  test('retorna 400 para localhost', async () => {
+    const res = await request(app)
+      .post('/screenshot')
+      .send({ url: 'http://localhost:3000/private' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/redes privadas/i);
+  });
+
+  test('retorna 400 para hostname que resuelve a IP privada', async () => {
+    const res = await request(app)
+      .post('/screenshot')
+      .send({ url: 'http://internal.example.test/admin' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/redes privadas/i);
+  });
+
+  test('retorna 400 para width inválido', async () => {
+    const res = await request(app)
+      .post('/screenshot')
+      .send({ url: 'https://example.com', width: 100 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/width/i);
   });
 
   test('toma screenshot JPEG', async () => {
@@ -92,6 +144,13 @@ describe('GET /screenshot', () => {
     const res = await request(app)
       .get('/screenshot?url=https://example.com&width=800&height=600&format=png');
     expect(res.status).toBe(200);
+  });
+
+  test('GET retorna 400 con timeout inválido', async () => {
+    const res = await request(app)
+      .get('/screenshot?url=https://example.com&timeout=abc');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/timeout/i);
   });
 });
 
@@ -131,6 +190,15 @@ describe('POST /batch', () => {
     expect(res.body.results[0].success).toBe(true);
     expect(res.body.results[0].data).toBeDefined();
     expect(res.body.results[0].format).toBe('png');
+  });
+
+  test('marca error por URL privada sin romper el lote', async () => {
+    const res = await request(app)
+      .post('/batch')
+      .send({ urls: ['https://example.com', 'http://internal.example.test'] });
+    expect(res.status).toBe(200);
+    expect(res.body.succeeded).toBe(1);
+    expect(res.body.results[1].success).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 'use strict';
 
 const { chromium } = require('playwright');
+const { assertSafeUrl, normalizeOptions } = require('./validation');
 
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
@@ -20,6 +21,7 @@ const DEFAULT_TIMEOUT = 30000;
  * @returns {Promise<Buffer>} Buffer de imagen
  */
 async function takeScreenshot(options = {}) {
+  const normalizedOptions = normalizeOptions(options);
   const {
     url,
     width = DEFAULT_WIDTH,
@@ -29,7 +31,7 @@ async function takeScreenshot(options = {}) {
     quality = 80,
     timeout = DEFAULT_TIMEOUT,
     waitUntil = 'networkidle',
-  } = options;
+  } = normalizedOptions;
 
   if (!url) throw new Error('URL es requerida');
 
@@ -44,6 +46,8 @@ async function takeScreenshot(options = {}) {
   if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
     throw new Error('Solo se aceptan URLs con protocolo http o https');
   }
+
+  await assertSafeUrl(parsedUrl);
 
   if (!['png', 'jpeg'].includes(format)) {
     throw new Error('Formato debe ser "png" o "jpeg"');

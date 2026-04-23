@@ -2,7 +2,7 @@
 
 ![Node](https://img.shields.io/badge/node-20+-green) ![Express](https://img.shields.io/badge/express-4.x-blue) ![Playwright](https://img.shields.io/badge/playwright-1.40-orange) ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-API REST para tomar screenshots de cualquier URL usando Playwright (Chromium headless). Soporta PNG/JPEG, viewport configurable, página completa, y captura en lote de hasta 10 URLs simultáneas.
+API REST para tomar screenshots de URLs usando Playwright (Chromium headless). Soporta PNG/JPEG, viewport configurable, página completa, captura en lote de hasta 10 URLs y bloquea por defecto destinos `localhost` o redes privadas para reducir riesgo SSRF.
 
 ## Instalación en 3 comandos
 
@@ -94,6 +94,7 @@ Respuesta:
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `PORT` | 3000 | Puerto del servidor |
+| `ALLOW_PRIVATE_NETWORKS` | `false` | Permite capturas a `localhost` o IPs privadas solo en entornos confiables |
 
 ## Contribuir
 
@@ -102,3 +103,8 @@ PRs bienvenidos. Corre `npm test` antes de enviar.
 ```bash
 npm test
 ```
+
+## Roadmap
+
+- Cache opcional por URL para evitar recapturas repetidas en ventanas cortas.
+- Cola con concurrencia configurable para lotes grandes o multiusuario.

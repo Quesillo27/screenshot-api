@@ -5,6 +5,23 @@ const { takeScreenshot } = require('./screenshot');
 
 const router = express.Router();
 
+function handleScreenshotError(res, err) {
+  if (err.message.includes('inválida')
+    || err.message.includes('requerida')
+    || err.message.includes('protocolo')
+    || err.message.includes('localhost')
+    || err.message.includes('debe')) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  if (err.message.includes('Timeout') || err.message.toLowerCase().includes('timeout')) {
+    return res.status(504).json({ error: 'Timeout al cargar la página', detail: err.message });
+  }
+
+  console.error('[screenshot] Error:', err.message);
+  return res.status(500).json({ error: 'Error al tomar el screenshot', detail: err.message });
+}
+
 /**
  * POST /screenshot
  * Body JSON: { url, width, height, fullPage, format, quality, timeout, waitUntil }
@@ -24,14 +41,7 @@ router.post('/screenshot', async (req, res) => {
     res.set('Content-Length', buffer.length);
     res.send(buffer);
   } catch (err) {
-    if (err.message.includes('inválida') || err.message.includes('requerida') || err.message.includes('protocolo')) {
-      return res.status(400).json({ error: err.message });
-    }
-    if (err.message.includes('Timeout') || err.message.toLowerCase().includes('timeout')) {
-      return res.status(504).json({ error: 'Timeout al cargar la página', detail: err.message });
-    }
-    console.error('[screenshot] Error:', err.message);
-    return res.status(500).json({ error: 'Error al tomar el screenshot', detail: err.message });
+    return handleScreenshotError(res, err);
   }
 });
 
@@ -61,11 +71,7 @@ router.get('/screenshot', async (req, res) => {
     res.set('Content-Length', buffer.length);
     res.send(buffer);
   } catch (err) {
-    if (err.message.includes('inválida') || err.message.includes('requerida') || err.message.includes('protocolo')) {
-      return res.status(400).json({ error: err.message });
-    }
-    console.error('[screenshot] Error GET:', err.message);
-    return res.status(500).json({ error: 'Error al tomar el screenshot', detail: err.message });
+    return handleScreenshotError(res, err);
   }
 });
 
@@ -111,7 +117,13 @@ router.post('/batch', async (req, res) => {
  * GET /health
  */
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'screenshot-api', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'screenshot-api',
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+    allowPrivateNetworks: process.env.ALLOW_PRIVATE_NETWORKS === 'true',
+  });
 });
 
 module.exports = router;
