@@ -87,6 +87,16 @@ describe('POST /screenshot', () => {
     expect(res.status).toBe(400);
   });
 
+  test('retorna 400 para JSON malformado', async () => {
+    const res = await request(app)
+      .post('/screenshot')
+      .set('Content-Type', 'application/json')
+      .send('{"url":')
+      .buffer(true);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/json malformado/i);
+  });
+
   test('retorna 400 para localhost', async () => {
     const res = await request(app)
       .post('/screenshot')
@@ -180,6 +190,20 @@ describe('POST /batch', () => {
     const res = await request(app).post('/batch').send({ urls });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/10/);
+  });
+
+  test('retorna 400 cuando urls contiene valores no string', async () => {
+    const res = await request(app).post('/batch').send({ urls: ['https://example.com', 123] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/urls/i);
+  });
+
+  test('retorna 400 cuando options no es objeto', async () => {
+    const res = await request(app)
+      .post('/batch')
+      .send({ urls: ['https://example.com'], options: 'jpeg' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/options/i);
   });
 
   test('resultado batch contiene base64', async () => {

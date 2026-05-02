@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { takeScreenshot } = require('./screenshot');
+const { isPlainObject } = require('./validation');
 
 const router = express.Router();
 
@@ -89,6 +90,14 @@ router.post('/batch', async (req, res) => {
 
   if (urls.length > 10) {
     return res.status(400).json({ error: 'Máximo 10 URLs por lote' });
+  }
+
+  if (urls.some((url) => typeof url !== 'string' || url.trim() === '')) {
+    return res.status(400).json({ error: 'Cada elemento de "urls" debe ser una URL string no vacía' });
+  }
+
+  if (!isPlainObject(options)) {
+    return res.status(400).json({ error: 'Campo "options" debe ser un objeto JSON' });
   }
 
   const results = await Promise.allSettled(

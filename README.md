@@ -4,6 +4,8 @@
 
 API REST para tomar screenshots de URLs usando Playwright (Chromium headless). Soporta PNG/JPEG, viewport configurable, página completa, captura en lote de hasta 10 URLs y bloquea por defecto destinos `localhost` o redes privadas para reducir riesgo SSRF.
 
+Las solicitudes con JSON malformado responden `400` en formato JSON, y `POST /batch` valida que `urls` contenga solo strings no vacíos y que `options` sea un objeto JSON.
+
 ## Instalación en 3 comandos
 
 ```bash

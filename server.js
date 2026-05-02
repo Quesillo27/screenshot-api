@@ -19,6 +19,10 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, _next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: 'JSON malformado' });
+  }
+
   console.error('[server] Error no manejado:', err);
   res.status(500).json({ error: 'Error interno del servidor' });
 });

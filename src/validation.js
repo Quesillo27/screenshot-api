@@ -5,6 +5,10 @@ const net = require('net');
 
 const ALLOWED_WAIT_UNTIL = new Set(['load', 'domcontentloaded', 'networkidle', 'commit']);
 
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function toInteger(value, fieldName) {
   const parsed = Number(value);
 
@@ -115,5 +119,6 @@ function normalizeOptions(options = {}) {
 
 module.exports = {
   assertSafeUrl,
+  isPlainObject,
   normalizeOptions,
 };
